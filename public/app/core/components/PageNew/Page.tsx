@@ -66,7 +66,9 @@ export const Page: PageType = ({
                   />
                 )}
                 {pageNav && pageNav.children && <PageTabs navItem={pageNav} />}
-                <div className={styles.pageContent}>{children}</div>
+                <div className={styles.pageContent} data-debug="children-container">
+                  {children}
+                </div>
               </div>
             </CustomScrollbar>
           </div>
@@ -99,7 +101,7 @@ Page.OldNavOnly = function OldNavOnly() {
 const getStyles = (theme: GrafanaTheme2) => {
   return {
     wrapper: css({
-      label: 'page-wrapper',
+      label: 'xxx-page-wrapper',
       height: '100%',
       display: 'flex',
       flex: '1 1 0',
@@ -107,7 +109,7 @@ const getStyles = (theme: GrafanaTheme2) => {
       minHeight: 0,
     }),
     panes: css({
-      label: 'page-panes',
+      label: 'xxx-page-panes',
       display: 'flex',
       height: '100%',
       width: '100%',
@@ -119,15 +121,15 @@ const getStyles = (theme: GrafanaTheme2) => {
       },
     }),
     pageContainer: css({
-      label: 'page-container',
+      label: 'xxx-page-container',
       flexGrow: 1,
     }),
     pageContent: css({
-      label: 'page-content',
+      label: 'xxx-page-content',
       flexGrow: 1,
     }),
     pageInner: css({
-      label: 'page-inner',
+      label: 'xxx-page-inner',
       padding: theme.spacing(2),
       borderRadius: theme.shape.borderRadius(1),
       border: `1px solid ${theme.colors.border.weak}`,
@@ -144,7 +146,7 @@ const getStyles = (theme: GrafanaTheme2) => {
       },
     }),
     canvasContent: css({
-      label: 'canvas-content',
+      label: 'xxx-canvas-content',
       display: 'flex',
       flexDirection: 'column',
       padding: theme.spacing(2),
