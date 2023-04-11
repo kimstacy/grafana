@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/query"
 	"github.com/grafana/grafana/pkg/tsdb/cloudwatch/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 )
@@ -56,63 +57,6 @@ func Test_executeSyncLogQuery(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"some region"}, sess.calledRegions)
-	})
-	t.Run("when a query refId is not provided, 'A' is assigned by default", func(t *testing.T) {
-		cli = fakeCWLogsClient{queryResults: cloudwatchlogs.GetQueryResultsOutput{Status: aws.String("Complete")}}
-		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-			return DataSource{Settings: models.CloudWatchSettings{}}, nil
-		})
-		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
-
-		res, err := executor.QueryData(context.Background(), &backend.QueryDataRequest{
-			Headers:       map[string]string{ngalertmodels.FromAlertHeaderName: "some value"},
-			PluginContext: backend.PluginContext{DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{}},
-			Queries: []backend.DataQuery{
-				{
-					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
-					JSON: json.RawMessage(`{
-						"queryMode":    "Logs"
-					}`),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		_, ok := res.Responses["A"]
-		assert.True(t, ok)
-	})
-
-	t.Run("when a query refId is not provided, 'A' is assigned by default", func(t *testing.T) {
-		cli = fakeCWLogsClient{queryResults: cloudwatchlogs.GetQueryResultsOutput{Status: aws.String("Complete")}}
-		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-			return DataSource{Settings: models.CloudWatchSettings{}}, nil
-		})
-		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
-
-		res, err := executor.QueryData(context.Background(), &backend.QueryDataRequest{
-			Headers:       map[string]string{ngalertmodels.FromAlertHeaderName: "some value"},
-			PluginContext: backend.PluginContext{DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{}},
-			Queries: []backend.DataQuery{
-				{
-					RefID:     "A",
-					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
-					JSON: json.RawMessage(`{
-						"queryMode":    "Logs"
-					}`),
-				},
-				{
-					RefID:     "B",
-					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
-					JSON: json.RawMessage(`{
-						"queryMode":    "Logs"
-					}`),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		_, ok := res.Responses["A"]
-		assert.True(t, ok)
 	})
 
 	t.Run("getCWLogsClient is called with region from instance manager when region is default", func(t *testing.T) {
@@ -204,4 +148,83 @@ func Test_executeSyncLogQuery(t *testing.T) {
 
 		executeSyncLogQuery = origExecuteSyncLogQuery
 	})
+}
+func Test_executeSyncLogQueryMocks(t *testing.T) {
+	origNewCWClient := NewCWClient
+	t.Cleanup(func() {
+		NewCWClient = origNewCWClient
+	})
+
+	var cli *mockLogsSyncClient
+	NewCWLogsClient = func(sess *session.Session) cloudwatchlogsiface.CloudWatchLogsAPI {
+		return cli
+	}
+
+	t.Run("when a query refId is not provided, 'A' is assigned by default", func(t *testing.T) {
+		cli = &mockLogsSyncClient{}
+		cli.On("StartQueryWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.StartQueryOutput{
+			QueryId: aws.String("abcd-efgh-ijkl-mnop"),
+		}, nil)
+		cli.On("GetQueryResultsWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.GetQueryResultsOutput{Status: aws.String("Complete")}, nil)
+		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+			return DataSource{Settings: models.CloudWatchSettings{}}, nil
+		})
+		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
+
+		res, err := executor.QueryData(context.Background(), &backend.QueryDataRequest{
+			Headers:       map[string]string{ngalertmodels.FromAlertHeaderName: "some value"},
+			PluginContext: backend.PluginContext{DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{}},
+			Queries: []backend.DataQuery{
+				{
+					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
+					JSON: json.RawMessage(`{
+						"queryMode":    "Logs"
+					}`),
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		_, ok := res.Responses["A"]
+		assert.True(t, ok)
+	})
+
+	t.Run("when RefIDs are provided, correctly pass them on with the results", func(t *testing.T) {
+		cli = &mockLogsSyncClient{}
+		cli.On("StartQueryWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.StartQueryOutput{
+			QueryId: aws.String("abcd-efgh-ijkl-mnop"),
+		}, nil)
+		cli.On("GetQueryResultsWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.GetQueryResultsOutput{Status: aws.String("Complete")}, nil)
+
+		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+			return DataSource{Settings: models.CloudWatchSettings{}}, nil
+		})
+		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
+
+		res, err := executor.QueryData(context.Background(), &backend.QueryDataRequest{
+			Headers:       map[string]string{ngalertmodels.FromAlertHeaderName: "some value"},
+			PluginContext: backend.PluginContext{DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{}},
+			Queries: []backend.DataQuery{
+				{
+					RefID:     "A",
+					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
+					JSON: json.RawMessage(`{
+						"queryMode":    "Logs"
+					}`),
+				},
+				{
+					RefID:     "B",
+					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
+					JSON: json.RawMessage(`{
+						"queryMode":    "Logs"
+					}`),
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		_, ok := res.Responses["A"]
+		assert.True(t, ok)
+	})
+
 }
