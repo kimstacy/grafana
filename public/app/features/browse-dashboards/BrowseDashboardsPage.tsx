@@ -39,7 +39,7 @@ export const BrowseDashboardsPage = memo(({ match, location }: Props) => {
       <Page.Contents className={styles.pageContents}>
         <BrowseActions />
 
-        {folderDTO && <pre>{JSON.stringify(folderDTO, null, 2)}</pre>}
+        {/* TODO: Move auto-sizer here and pass height into Search and Browse views */}
 
         {searchState.query ? <SearchView searchState={searchState} /> : <BrowseView folderUID={folderUID} />}
       </Page.Contents>
