@@ -66,7 +66,7 @@ var executeSyncLogQuery = func(ctx context.Context, e *cloudWatchExecutor, req *
 		}
 
 		refId := "A"
-		if(q.RefID != "") {
+		if q.RefID != "" {
 			refId = q.RefID
 		}
 
