@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
@@ -12,14 +15,15 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	ngalertmodels "github.com/grafana/grafana/pkg/services/ngalert/models"
 	"github.com/grafana/grafana/pkg/services/query"
 	"github.com/grafana/grafana/pkg/tsdb/cloudwatch/models"
+	"github.com/grafana/grafana/pkg/tsdb/cloudwatch/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_executeSyncLogQuery(t *testing.T) {
@@ -189,12 +193,65 @@ func Test_executeSyncLogQueryMocks(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("when RefIDs are provided, correctly pass them on with the results", func(t *testing.T) {
+	t.Run("when a query refId is provided, it is returned in the response", func(t *testing.T) {
 		cli = &mockLogsSyncClient{}
 		cli.On("StartQueryWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.StartQueryOutput{
 			QueryId: aws.String("abcd-efgh-ijkl-mnop"),
 		}, nil)
 		cli.On("GetQueryResultsWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatchlogs.GetQueryResultsOutput{Status: aws.String("Complete")}, nil)
+		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+			return DataSource{Settings: models.CloudWatchSettings{}}, nil
+		})
+		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
+
+		res, err := executor.QueryData(context.Background(), &backend.QueryDataRequest{
+			Headers:       map[string]string{ngalertmodels.FromAlertHeaderName: "some value"},
+			PluginContext: backend.PluginContext{DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{}},
+			Queries: []backend.DataQuery{
+				{
+					RefID:     "B",
+					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
+					JSON: json.RawMessage(`{
+						"queryMode":    "Logs"
+					}`),
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		_, ok := res.Responses["B"]
+		assert.True(t, ok)
+	})
+
+	t.Run("when RefIDs are provided, correctly pass them on with the results", func(t *testing.T) {
+		// This test demonstrates that given two queries with different RefIds, when each query has a different response from AWS API calls, the RefIds are correctly reassigned to the associated response.
+		cli = &mockLogsSyncClient{}
+		cli.On("StartQueryWithContext", mock.Anything, mock.MatchedBy(func(input *cloudwatchlogs.StartQueryInput) bool {
+			return *input.QueryString == "fields @timestamp,ltrim(@log) as __log__grafana_internal__,ltrim(@logStream) as __logstream__grafana_internal__|query string for A" // this QueryId will only be returned when the input expression = "query string for A"
+		}), mock.Anything).Return(&cloudwatchlogs.StartQueryOutput{
+			QueryId: aws.String("queryId for A"),
+		}, nil)
+		cli.On("StartQueryWithContext", mock.Anything, mock.MatchedBy(func(input *cloudwatchlogs.StartQueryInput) bool {
+			return *input.QueryString == "fields @timestamp,ltrim(@log) as __log__grafana_internal__,ltrim(@logStream) as __logstream__grafana_internal__|query string for B" // this QueryId will only be returned when the input expression = "query string for B"
+		}), mock.Anything).Return(&cloudwatchlogs.StartQueryOutput{
+			QueryId: aws.String("queryId for B"),
+		}, nil)
+		cli.On("GetQueryResultsWithContext", mock.Anything, mock.MatchedBy(func(input *cloudwatchlogs.GetQueryResultsInput) bool {
+			return *input.QueryId == "queryId for A"
+		}), mock.Anything).Return(&cloudwatchlogs.GetQueryResultsOutput{
+			Results: [][]*cloudwatchlogs.ResultField{{{
+				Field: utils.Pointer("@log"),
+				Value: utils.Pointer("A result"), // this Value will only be returned when the argument is QueryId = "query string for A"
+			}}},
+			Status: aws.String("Complete")}, nil)
+		cli.On("GetQueryResultsWithContext", mock.Anything, mock.MatchedBy(func(input *cloudwatchlogs.GetQueryResultsInput) bool {
+			return *input.QueryId == "queryId for B"
+		}), mock.Anything).Return(&cloudwatchlogs.GetQueryResultsOutput{
+			Results: [][]*cloudwatchlogs.ResultField{{{
+				Field: utils.Pointer("@log"),
+				Value: utils.Pointer("B result"), // this Value will only be returned when the argument is QueryId = "query string for B"
+			}}},
+			Status: aws.String("Complete")}, nil)
 
 		im := datasource.NewInstanceManager(func(s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 			return DataSource{Settings: models.CloudWatchSettings{}}, nil
@@ -209,22 +266,31 @@ func Test_executeSyncLogQueryMocks(t *testing.T) {
 					RefID:     "A",
 					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
 					JSON: json.RawMessage(`{
-						"queryMode":    "Logs"
+						"queryMode":    "Logs",
+						"expression": "query string for A"
 					}`),
 				},
 				{
 					RefID:     "B",
 					TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(1, 0)},
 					JSON: json.RawMessage(`{
-						"queryMode":    "Logs"
+						"queryMode":    "Logs",
+						"expression": "query string for B"
 					}`),
 				},
 			},
 		})
 
+		expectedLogFieldFromFirstCall := data.NewField("@log", nil, []*string{utils.Pointer("A result")}) // verifies the response from GetQueryResultsWithContext matches the input RefId A
 		assert.NoError(t, err)
-		_, ok := res.Responses["A"]
-		assert.True(t, ok)
-	})
+		respA, ok := res.Responses["A"]
+		require.True(t, ok)
+		assert.Equal(t, []*data.Field{expectedLogFieldFromFirstCall}, respA.Frames[0].Fields)
 
+		expectedLogFieldFromSecondCall := data.NewField("@log", nil, []*string{utils.Pointer("B result")}) // verifies the response from GetQueryResultsWithContext matches the input RefId B
+		respB, ok := res.Responses["B"]
+		require.True(t, ok)
+		assert.Equal(t, []*data.Field{expectedLogFieldFromSecondCall}, respB.Frames[0].Fields)
+	})
 }
+
