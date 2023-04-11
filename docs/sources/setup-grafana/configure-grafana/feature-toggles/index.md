@@ -52,7 +52,6 @@ Some stable features are enabled by default. You can disable a stable feature by
 | `accessControlOnCall`             | Access control primitives for OnCall                                                                                                                                                         |
 | `alertingNoNormalState`           | Stop maintaining state of alerts that are not firing                                                                                                                                         |
 | `renderAuthJWT`                   | Uses JWT-based auth for rendering instead of relying on remote cache                                                                                                                         |
-| `correlations`                    | Correlations page                                                                                                                                                                            |
 
 ## Alpha feature toggles
 
@@ -71,6 +70,7 @@ Alpha features might be changed or removed without prior notice.
 | `storage`                          | Configurable storage for dashboards, datasources, and resources                                                                                                                                     |
 | `exploreMixedDatasource`           | Enable mixed datasource in Explore                                                                                                                                                                  |
 | `newTraceView`                     | Shows the new trace view design                                                                                                                                                                     |
+| `correlations`                     | Correlations page                                                                                                                                                                                   |
 | `datasourceQueryMultiStatus`       | Introduce HTTP 207 Multi Status for api/ds/query                                                                                                                                                    |
 | `traceToMetrics`                   | Enable trace to metrics links                                                                                                                                                                       |
 | `prometheusWideSeries`             | Enable wide series responses in the Prometheus datasource                                                                                                                                           |
@@ -107,6 +107,7 @@ Alpha features might be changed or removed without prior notice.
 | `unifiedRequestLog`                | Writes error logs to the request logger                                                                                                                                                             |
 | `pyroscopeFlameGraph`              | Changes flame graph to pyroscope one                                                                                                                                                                |
 | `dataplaneFrontendFallback`        | Support dataplane contract field name change for transformations and field name matchers where the name is different                                                                                |
+| `opensearchDetectVersion`          | Enable version detection in OpenSearch                                                                                                                                                              |
 
 ## Development feature toggles
 

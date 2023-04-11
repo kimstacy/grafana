@@ -314,4 +314,8 @@ const (
 	// FlagDisableElasticsearchBackendQuerying
 	// Disable the processing of queries and responses in the Elasticsearch data source through backend
 	FlagDisableElasticsearchBackendQuerying = "disableElasticsearchBackendQuerying"
+
+	// FlagOpensearchDetectVersion
+	// Enable version detection in OpenSearch
+	FlagOpensearchDetectVersion = "opensearchDetectVersion"
 )

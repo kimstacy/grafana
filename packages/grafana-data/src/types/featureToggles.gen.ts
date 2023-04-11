@@ -95,4 +95,5 @@ export interface FeatureToggles {
   externalServiceAuth?: boolean;
   dataplaneFrontendFallback?: boolean;
   disableElasticsearchBackendQuerying?: boolean;
+  opensearchDetectVersion?: boolean;
 }
