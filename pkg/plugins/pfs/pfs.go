@@ -16,6 +16,7 @@ import (
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
 	"github.com/grafana/kindsys"
+	kindcheck "github.com/grafana/kindsys/validation"
 	"github.com/grafana/thema"
 	"github.com/grafana/thema/load"
 	"github.com/grafana/thema/vmux"
@@ -208,6 +209,10 @@ func ParsePluginFS(fsys fs.FS, rt *thema.Runtime) (ParsedPlugin, error) {
 	gpi := ctx.BuildInstance(bi).Unify(gpv)
 	if gpi.Err() != nil {
 		return ParsedPlugin{}, errors.Wrap(errors.Promote(ErrInvalidGrafanaPluginInstance, pp.Properties.Id), gpi.Err())
+	}
+
+	if err := kindcheck.EnsureNoExportedKindName(gpi); err != nil {
+		return ParsedPlugin{}, err
 	}
 
 	for _, si := range allsi {
