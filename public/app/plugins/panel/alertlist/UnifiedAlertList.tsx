@@ -96,6 +96,15 @@ export function UnifiedAlertList(props: PanelProps<UnifiedAlertListOptions>) {
     };
   }, [dispatch, dashboard, props.options.alertInstanceLabelFilter, props.options.stateFilter]);
 
+  const handleRemoveInstancesLimit = () => {
+    dispatch(
+      fetchAllPromAndRulerRulesAction(false, {
+        matcher: props.options.alertInstanceLabelFilter,
+        state: getStateList(props.options.stateFilter),
+      })
+    );
+  };
+
   const { prom, ruler } = useUnifiedAlertingSelector((state) => ({
     prom: state.promRules[GRAFANA_RULES_SOURCE_NAME] || initialAsyncRequestState,
     ruler: state.rulerRules[GRAFANA_RULES_SOURCE_NAME] || initialAsyncRequestState,
@@ -154,7 +163,11 @@ export function UnifiedAlertList(props: PanelProps<UnifiedAlertListOptions>) {
             <GroupedModeView rules={rules} options={props.options} />
           )}
           {props.options.viewMode === ViewMode.List && props.options.groupMode === GroupMode.Default && haveResults && (
-            <UngroupedModeView rules={rules} options={props.options} />
+            <UngroupedModeView
+              rules={rules}
+              options={props.options}
+              handleShowAllInstances={handleRemoveInstancesLimit}
+            />
           )}
         </section>
       </div>
