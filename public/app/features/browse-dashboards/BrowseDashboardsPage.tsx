@@ -70,3 +70,4 @@ const getStyles = () => ({
 });
 
 BrowseDashboardsPage.displayName = 'BrowseDashboardsPage';
+export default BrowseDashboardsPage;
