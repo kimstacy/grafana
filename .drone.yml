@@ -569,6 +569,8 @@ steps:
   name: build-frontend
 - commands:
   - ./bin/build build-frontend-packages --jobs 8 --edition oss --build-id ${DRONE_BUILD_NUMBER}
+  - yarn packages:pack
+  - ./scripts/validate-npm-packages.sh
   depends_on:
   - compile-build-cmd
   - yarn-install
@@ -1452,6 +1454,8 @@ steps:
   name: build-frontend
 - commands:
   - ./bin/build build-frontend-packages --jobs 8 --edition oss --build-id ${DRONE_BUILD_NUMBER}
+  - yarn packages:pack
+  - ./scripts/validate-npm-packages.sh
   depends_on:
   - compile-build-cmd
   - yarn-install
@@ -1728,7 +1732,7 @@ steps:
     repo:
     - grafana/grafana
 - commands:
-  - ./scripts/circle-release-canary-packages.sh
+  - ./scripts/publish-npm-packages.sh --dist-tag 'canary' --registry 'https://registry.npmjs.org/'
   depends_on:
   - end-to-end-tests-dashboards-suite
   - end-to-end-tests-panels-suite
@@ -4673,6 +4677,8 @@ steps:
   name: build-frontend
 - commands:
   - ./bin/build build-frontend-packages --jobs 8 --edition oss --build-id ${DRONE_BUILD_NUMBER}
+  - yarn packages:pack
+  - ./scripts/validate-npm-packages.sh
   depends_on:
   - compile-build-cmd
   - yarn-install
@@ -5312,6 +5318,8 @@ steps:
   name: build-frontend
 - commands:
   - ./bin/build build-frontend-packages --jobs 8 --edition enterprise --build-id ${DRONE_BUILD_NUMBER}
+  - yarn packages:pack
+  - ./scripts/validate-npm-packages.sh
   depends_on:
   - compile-build-cmd
   - yarn-install
@@ -6029,6 +6037,8 @@ steps:
   name: build-frontend
 - commands:
   - ./bin/build build-frontend-packages --jobs 8 --edition enterprise --build-id ${DRONE_BUILD_NUMBER}
+  - yarn packages:pack
+  - ./scripts/validate-npm-packages.sh
   depends_on:
   - compile-build-cmd
   - yarn-install
@@ -6786,6 +6796,6 @@ kind: secret
 name: enterprise2_security_prefix
 ---
 kind: signature
-hmac: 421b968fc475a71ac3367a4f9d2da3b6ff68208c04d28d5fd1074cf03688a52a
+hmac: 43c8052ffd53cfa0e8365c8710f3026c014c0e6bdfef170fef9cf7eee58de3ed
 
 ...

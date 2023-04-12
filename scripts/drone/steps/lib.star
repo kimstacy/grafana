@@ -567,6 +567,8 @@ def build_frontend_package_step(edition, ver_mode):
         cmds = [
             "./bin/build build-frontend-packages --jobs 8 --edition {} ".format(edition) +
             "--build-id {}".format(build_no),
+            "yarn packages:pack",
+            "./scripts/validate-npm-packages.sh",
         ]
 
     return {
@@ -1181,7 +1183,7 @@ def release_canary_npm_packages_step(trigger = None):
             "NPM_TOKEN": from_secret("npm_token"),
         },
         "commands": [
-            "./scripts/circle-release-canary-packages.sh",
+            "./scripts/publish-npm-packages.sh --dist-tag 'canary' --registry 'https://registry.npmjs.org/'",
         ],
     }
     if trigger:
